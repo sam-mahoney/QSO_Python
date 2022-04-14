@@ -80,8 +80,8 @@ def beacon_loop():
             {
                 'task_id': json['task_id'], 'contents': contents, 'success': success
             }
-        ])
-        print(f"POST Result {result}")
+        ]).json()
+        print(f"POST Result: {result}")
 
 
 if __name__ == '__main__':
