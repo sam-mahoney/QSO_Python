@@ -20,8 +20,11 @@ def main():
     counter = 1
     with open("power_consumption.txt", encoding="utf-8") as f:
         for row in f:
+            # We only care about readings or timestamps
+            if "#" not in row[0] and "^" not in row[0]:
+                continue
             # Check not a timestamp
-            if "^" not in row:
+            elif "^" not in row:
                 # Y AXIS
                 char_pos = row.find("W")
                 # We only want everything before the first "W"
@@ -33,8 +36,9 @@ def main():
                 # Add to array
                 watt_values.append(float(watts))
             else:
+                # Must be a timestamp
                 timestamp = int(row[12:])
-                if timestamp == task_start:
+                if timestamp == task_start and start_reading_pos is None:
                     start_reading_pos = counter
                 elif timestamp == task_end:
                     end_reading_pos = counter
