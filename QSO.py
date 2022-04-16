@@ -13,7 +13,6 @@ def build_command(task):
     command = []
     for key in task:
         if key not in ["_id", "task_id", "task_type", "task_status"]:
-            print(f"{key}: {task[key]}")
             command.append(task[key])
     return command
 
@@ -30,7 +29,7 @@ def execute_task(task):
     success = False
     output = True
     command = []
-    # Assume we have 4 task_types
+    # Assume we have 3 task_types
     task_type = task["task_type"]
     if task_type == "ping":
         command.append(task_type)
@@ -43,7 +42,7 @@ def execute_task(task):
         command = build_command(task)
     # Perform task
     print(f"command : {command}")
-    # If stress test don't output due to bug in subprocesses stopping timeout
+    # If stress test then output = False due to bug in subprocesses module preventing timeout
     if command == ["yes", ">", "/dev/null", "&"]:
         output = False
     start_time = round(datetime.timestamp(datetime.now()))
